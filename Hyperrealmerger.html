@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Lab - Improved</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            margin: 0; padding: 0; overflow: hidden;
+            background: #000; color: #fff;
+            font-family: 'Inter', Segoe UI, sans-serif;
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+        .control-panel::-webkit-scrollbar { width: 6px; }
+        .control-panel::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.3); border-radius: 3px; }
+        .control-panel::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        .glassmorphic-panel {
+            background: rgba(30, 30, 45, 0.65);
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        input[type="range"] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+            background: rgba(255, 255, 255, 0.1); border-radius: 3px; outline: none; transition: background 0.3s;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 16px; height: 16px;
+            background: #cbd5e1; border-radius: 50%; cursor: pointer; border: 2px solid rgba(30, 30, 45, 0.8);
+        }
+        input[type="range"]:hover { background: rgba(255, 255, 255, 0.2); }
+        .btn-icon {
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        .btn-icon:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.1);
+        }
+        #collapsible-content {
+            max-height: 800px;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out, margin 0.5s ease-in-out;
+        }
+        .collapsed #collapsible-content {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            margin-top: 0;
+        }
+        .toggle-label {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        .toggle-checkbox {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-switch {
+            width: 36px;
+            height: 20px;
+            background-color: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            transition: background-color 0.2s;
+            position: relative;
+        }
+        .toggle-switch::before {
+            content: "";
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: #cbd5e1;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+        }
+        .toggle-checkbox:checked + .toggle-switch {
+            background-color: #4f46e5;
+        }
+        .toggle-checkbox:checked + .toggle-switch::before {
+            transform: translateX(16px);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- UI Panels -->
+    <div class="absolute top-4 left-4 z-10 flex flex-col gap-4 max-h-[calc(100vh-2rem)]">
+        <div id="controlsContainer" class="glassmorphic-panel p-5 rounded-xl shadow-2xl w-full max-w-xs sm:max-w-sm md:max-w-[300px] control-panel overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-white/90">Simulation Controls</h2>
+                <div class="flex items-center gap-2">
+                    <button id="playPauseBtn" class="p-2 btn-icon" title="Pause Physics">
+                        <svg id="pauseIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                        <svg id="playIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
+                    </button>
+                    <button id="resetBtn" class="p-2 btn-icon" title="Reset Simulation">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg>
+                    </button>
+                     <button id="toggleControlsBtn" class="p-2 btn-icon" title="Minimize">
+                        <svg id="minimizeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" /></svg>
+                        <svg id="maximizeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="collapsible-content">
+                <h3 class="text-lg font-semibold text-white/90 mb-3">Merger</h3>
+                <div class="mb-5 mt-1">
+                    <h4 class="text-sm font-medium text-white/70 mb-2">Simulation Phase</h4>
+                    <div class="w-full bg-black/20 rounded-full h-2.5">
+                        <div id="progressBar" class="bg-gradient-to-r from-sky-400 to-indigo-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <div class="text-center mt-2">
+                        <span id="statusText" class="text-lg font-semibold text-sky-300">Initializing...</span>
+                    </div>
+                </div>
+                <div class="space-y-5">
+                    <div>
+                        <div class="flex justify-between items-center text-sm text-white/80 mb-1">
+                            <label for="massRatioSlider">Mass Ratio (M₂/M₁)</label>
+                            <span id="massRatioValue">0.80</span>
+                        </div>
+                        <input type="range" id="massRatioSlider" min="0.1" max="1.0" step="0.01" value="0.8">
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center text-sm text-white/80 mb-1">
+                            <label for="separationSlider">Initial Separation</label>
+                            <span id="separationValue">20</span>
+                        </div>
+                        <input type="range" id="separationSlider" min="10" max="30" step="1" value="20">
+                    </div>
+                     <div>
+                        <div class="flex justify-between items-center text-sm text-white/80 mb-1">
+                            <label for="timeScaleSlider">Simulation Speed</label>
+                            <span id="timeScaleValue">1.0x</span>
+                        </div>
+                        <input type="range" id="timeScaleSlider" min="0.0" max="3.0" step="0.1" value="1.0">
+                    </div>
+                </div>
+                
+                <hr class="border-white/10 my-6">
+
+                <h3 class="text-lg font-semibold text-white/90 mb-4">Environment</h3>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center text-sm text-white/80">
+                        <span>Pause Scene</span>
+                        <label class="toggle-label">
+                            <input type="checkbox" id="scenePauseToggle" class="toggle-checkbox">
+                            <div class="toggle-switch"></div>
+                        </label>
+                    </div>
+                    <div class="flex justify-between items-center text-sm text-white/80">
+                        <span>Enclose Room</span>
+                        <label class="toggle-label">
+                            <input type="checkbox" id="encloseRoomToggle" class="toggle-checkbox">
+                            <div class="toggle-switch"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
+      }
+    }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+
+        // --- LIGHTING IMPROVEMENT ---
+        // Based on your feedback, I've adjusted the lighting to make the room more visible.
+        // 1. Brighter Ambient Light: Increased the intensity of the main ambient light.
+        // 2. Added Hemisphere Light: This adds a soft, natural-looking light that differentiates
+        //    the ceiling (cool color) from the floor (warm color), improving orientation.
+        // 3. Brighter Room Material: The walls and floor are now a slightly lighter color
+        //    to better catch the light.
+
+        let scene, camera, renderer, composer, controls, clock;
+        let lensingPass, wavePass, bloomPass;
+        let mergerFlare;
+        let roomMaterial, backgroundLights = [];
+        let roof, frontWall;
+
+        const sim = {
+            physicsPaused: false,
+            scenePaused: false,
+            timeScale: 1.0,
+            phase: 'INSPIRAL',
+            phaseTime: 0,
+            progress: 0,
+            config: { massRatio: 0.8, initialSeparation: 20 },
+            bh1: null, bh2: null, mergedBh: null,
+        };
+
+        const G = 150; 
+        const MERGER_FLARE_PARTICLES = 5000;
+        const C = 30;
+        const ROOM_HEIGHT = 90;
+
+        class BlackHole {
+            constructor(mass, position, velocity, color1, color2) {
+                this.mass = mass;
+                this.pos = position;
+                this.vel = velocity;
+                this.radius = Math.pow(this.mass, 0.7) * 0.2;
+                
+                this.visuals = this.createVisuals(color1, color2);
+                this.visuals.scale.setScalar(this.radius * 15);
+                scene.add(this.visuals);
+            }
+
+            createVisuals(color1, color2) {
+                const geometry = new THREE.PlaneGeometry(1, 1);
+                const material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        time: { value: 0 },
+                        glowColor1: { value: new THREE.Color(color1) },
+                        glowColor2: { value: new THREE.Color(color2) },
+                        spin: { value: 1.0 }
+                    },
+                    vertexShader: `
+                        varying vec2 vUv;
+                        void main() {
+                            vUv = uv;
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                        }
+                    `,
+                    fragmentShader: `
+                        varying vec2 vUv;
+                        uniform float time;
+                        uniform vec3 glowColor1;
+                        uniform vec3 glowColor2;
+                        uniform float spin;
+
+                        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                        vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                        vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+                        float snoise(vec2 v) {
+                            const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
+                            vec2 i  = floor(v + dot(v, C.yy) );
+                            vec2 x0 = v -   i + dot(i, C.xx);
+                            vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+                            vec4 x12 = x0.xyxy + C.xxzz;
+                            x12.xy -= i1;
+                            i = mod289(i);
+                            vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 )) + i.x + vec3(0.0, i1.x, 1.0 ));
+                            vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+                            m = m*m; m = m*m;
+                            vec3 x = 2.0 * fract(p * C.www) - 1.0;
+                            vec3 h = abs(x) - 0.5;
+                            vec3 ox = floor(x + 0.5);
+                            vec3 a0 = x - ox;
+                            m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+                            vec3 g;
+                            g.x  = a0.x  * x0.x  + h.x  * x0.y;
+                            g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+                            return 130.0 * dot(m, g);
+                        }
+
+                        void main() {
+                            vec2 p = vUv - 0.5;
+                            float r = length(p);
+                            float angle = atan(p.y, p.x);
+                            float shadowRadius = 0.08;
+                            if (r < shadowRadius) {
+                                gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+                                return;
+                            }
+                            float diskRadius = 0.5;
+                            if (r > diskRadius) discard;
+                            float turbulence = snoise(p * 8.0 + time * 0.1);
+                            float distortedRadius = r + turbulence * 0.02;
+                            float doppler = (p.x * spin + 0.5);
+                            doppler = pow(doppler, 3.0);
+                            float intensity = pow(1.0 - (distortedRadius - shadowRadius) / (diskRadius - shadowRadius), 2.0);
+                            intensity *= doppler;
+                            vec3 color = mix(glowColor2, glowColor1, intensity);
+                            gl_FragColor = vec4(color * intensity * 2.0, 1.0);
+                        }
+                    `,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false,
+                });
+                const disk = new THREE.Mesh(geometry, material);
+                disk.rotation.x = -Math.PI / 2;
+                return disk;
+            }
+
+            update(dt) {
+                this.pos.add(this.vel.clone().multiplyScalar(dt));
+                this.visuals.position.copy(this.pos);
+                this.visuals.material.uniforms.time.value += dt * sim.timeScale;
+                this.visuals.quaternion.copy(camera.quaternion);
+            }
+
+            setVisible(visible) {
+                this.visuals.visible = visible;
+            }
+        }
+
+        init();
+
+        function init() {
+            clock = new THREE.Clock();
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 5000);
+            camera.position.set(0, ROOM_HEIGHT / 2, 45);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            document.body.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, ROOM_HEIGHT / 2, 0);
+            controls.enableDamping = true; controls.dampingFactor = 0.04;
+            controls.maxDistance = 100;
+            controls.minDistance = 5;
+
+            createBackgroundStructure();
+            createMergerFlare();
+            setupPostProcessing();
+            setupUI();
+
+            resetSimulation();
+            animate();
+        }
+
+        function createBackgroundStructure() {
+            // LIGHTING CHANGE: Increased ambient light intensity for better visibility.
+            scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+            
+            // LIGHTING CHANGE: Added a hemisphere light for more natural ambient lighting.
+            const hemiLight = new THREE.HemisphereLight( 0x888899, 0x444455, 0.5 );
+            scene.add( hemiLight );
+
+            const roomSize = 180;
+            
+            // LIGHTING CHANGE: Brightened the room material color.
+            roomMaterial = new THREE.MeshStandardMaterial({
+                color: 0x404045,
+                metalness: 0.8,
+                roughness: 0.4,
+            });
+
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(roomSize, roomSize), roomMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            scene.add(floor);
+
+            const backWall = new THREE.Mesh(new THREE.PlaneGeometry(roomSize, ROOM_HEIGHT), roomMaterial);
+            backWall.position.z = -roomSize / 2;
+            backWall.position.y = ROOM_HEIGHT / 2;
+            scene.add(backWall);
+            
+            const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(roomSize, ROOM_HEIGHT), roomMaterial);
+            leftWall.rotation.y = Math.PI / 2;
+            leftWall.position.x = -roomSize / 2;
+            leftWall.position.y = ROOM_HEIGHT / 2;
+            scene.add(leftWall);
+
+            const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(roomSize, ROOM_HEIGHT), roomMaterial);
+            rightWall.rotation.y = -Math.PI / 2;
+            rightWall.position.x = roomSize / 2;
+            rightWall.position.y = ROOM_HEIGHT / 2;
+            scene.add(rightWall);
+            
+            roof = new THREE.Mesh(new THREE.PlaneGeometry(roomSize, roomSize), roomMaterial);
+            roof.rotation.x = Math.PI / 2;
+            roof.position.y = ROOM_HEIGHT;
+            roof.visible = true;
+            scene.add(roof);
+
+            frontWall = new THREE.Mesh(new THREE.PlaneGeometry(roomSize, ROOM_HEIGHT), roomMaterial);
+            frontWall.position.z = roomSize / 2;
+            frontWall.position.y = ROOM_HEIGHT / 2;
+            frontWall.rotation.y = Math.PI;
+            frontWall.visible = true;
+            scene.add(frontWall);
+
+            const colors = [ 0xffffff, 0xfefefe, 0xfafafa, 0xf8f8ff, 0xf5f5f5 ];
+            const numLights = 15;
+            for (let i = 0; i < numLights; i++) {
+                const color = colors[i % colors.length];
+                const pointLight = new THREE.PointLight(color, 200.0, 300); 
+                const emitter = new THREE.Object3D();
+                emitter.add(pointLight);
+                
+                emitter.userData.anim = {
+                    speedX: (Math.random() - 0.5) * 0.4, speedY: (Math.random() - 0.5) * 0.4, speedZ: (Math.random() - 0.5) * 0.4,
+                    phaseX: Math.random() * Math.PI * 2, phaseY: Math.random() * Math.PI * 2, phaseZ: Math.random() * Math.PI * 2,
+                    radiusX: 20 + Math.random() * (roomSize / 2 - 40),
+                    radiusY: 10 + Math.random() * (ROOM_HEIGHT / 2 - 20),
+                    radiusZ: 20 + Math.random() * (roomSize / 2 - 40),
+                };
+                backgroundLights.push(emitter);
+                scene.add(emitter);
+            }
+        }
+
+        function createMergerFlare() {
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(MERGER_FLARE_PARTICLES * 3), 3));
+            const mat = new THREE.PointsMaterial({ color: 0xfff0b3, size: 0.3, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 });
+            mergerFlare = new THREE.Points(geo, mat);
+            mergerFlare.userData.particles = [];
+            for(let i=0; i<MERGER_FLARE_PARTICLES; i++) {
+                mergerFlare.userData.particles.push({ vel: new THREE.Vector3(), life: 0 });
+            }
+            scene.add(mergerFlare);
+        }
+
+        function setupPostProcessing() {
+            composer = new EffectComposer(renderer);
+            composer.addPass(new RenderPass(scene, camera));
+            wavePass = new ShaderPass(GravitationalWaveShader());
+            composer.addPass(wavePass);
+            lensingPass = new ShaderPass(LensingShader());
+            composer.addPass(lensingPass);
+            bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.2, 0.6, 0.4); 
+            composer.addPass(bloomPass);
+        }
+
+        function LensingShader() {
+            return {
+                uniforms: {
+                    tDiffuse: { value: null }, resolution: { value: new THREE.Vector2() },
+                    bhPos1: { value: new THREE.Vector2(0.5, 0.5) }, bhPos2: { value: new THREE.Vector2(0.5, 0.5) },
+                    bhRadius1: { value: 0.0 }, bhRadius2: { value: 0.0 },
+                    mass1: { value: 0.0 }, mass2: { value: 0.0 },
+                },
+                vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
+                fragmentShader: `
+                    uniform sampler2D tDiffuse; uniform vec2 resolution;
+                    uniform vec2 bhPos1; uniform vec2 bhPos2;
+                    uniform float bhRadius1; uniform float bhRadius2;
+                    uniform float mass1; uniform float mass2;
+                    varying vec2 vUv;
+                    
+                    void main() {
+                        vec2 p = vUv;
+                        vec2 to1 = bhPos1 - p;
+                        float dist1 = length(to1);
+                        if (dist1 < bhRadius1) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
+                        float pull1 = (mass1 / 1000.0) / (dist1 * dist1 + 0.001);
+                        p += normalize(to1) * pull1;
+                        vec2 to2 = bhPos2 - p;
+                        float dist2 = length(to2);
+                        if (dist2 < bhRadius2) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
+                        float pull2 = (mass2 / 1000.0) / (dist2 * dist2 + 0.001);
+                        p += normalize(to2) * pull2;
+                        gl_FragColor = texture2D(tDiffuse, p);
+                    }`
+            };
+        }
+
+        function GravitationalWaveShader() {
+            return {
+                uniforms: {
+                    tDiffuse: { value: null }, time: { value: 0.0 },
+                    origin: { value: new THREE.Vector2(0.5, 0.5) },
+                    amplitude: { value: 0.0 }, frequency: { value: 30.0 },
+                },
+                vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`,
+                fragmentShader: `
+                    uniform sampler2D tDiffuse; uniform float time;
+                    uniform vec2 origin; uniform float amplitude; uniform float frequency;
+                    varying vec2 vUv;
+                    void main() {
+                        vec2 d = vUv - origin;
+                        float dist = length(d);
+                        float angle = atan(d.y, d.x);
+                        float quadrupole = cos(angle * 2.0);
+                        float wave = sin(dist * frequency - time * 15.0) * amplitude * smoothstep(0.0, 0.8, dist) * quadrupole;
+                        vec2 offset = normalize(d) * wave;
+                        gl_FragColor = texture2D(tDiffuse, vUv + offset);
+                    }`
+            };
+        }
+
+        function setupUI() {
+            const massRatioSlider = document.getElementById('massRatioSlider');
+            const massRatioValue = document.getElementById('massRatioValue');
+            const separationSlider = document.getElementById('separationSlider');
+            const separationValue = document.getElementById('separationValue');
+            const timeScaleSlider = document.getElementById('timeScaleSlider');
+            const timeScaleValue = document.getElementById('timeScaleValue');
+            const resetBtn = document.getElementById('resetBtn');
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const playIcon = document.getElementById('playIcon');
+            const pauseIcon = document.getElementById('pauseIcon');
+            const toggleControlsBtn = document.getElementById('toggleControlsBtn');
+            const controlsContainer = document.getElementById('controlsContainer');
+            const minimizeIcon = document.getElementById('minimizeIcon');
+            const maximizeIcon = document.getElementById('maximizeIcon');
+            const scenePauseToggle = document.getElementById('scenePauseToggle');
+            const encloseRoomToggle = document.getElementById('encloseRoomToggle');
+
+            massRatioSlider.addEventListener('input', e => {
+                sim.config.massRatio = parseFloat(e.target.value);
+                massRatioValue.textContent = sim.config.massRatio.toFixed(2);
+            });
+            separationSlider.addEventListener('input', e => {
+                sim.config.initialSeparation = parseFloat(e.target.value);
+                separationValue.textContent = sim.config.initialSeparation.toFixed(0);
+            });
+            timeScaleSlider.addEventListener('input', e => {
+                const value = parseFloat(e.target.value);
+                sim.timeScale = value;
+                timeScaleValue.textContent = `${value.toFixed(1)}x`;
+                if (value === 0) {
+                    sim.scenePaused = true;
+                    scenePauseToggle.checked = true;
+                } else if (sim.scenePaused && scenePauseToggle.checked) {
+                   sim.scenePaused = false;
+                   scenePauseToggle.checked = false;
+                }
+            });
+
+            resetBtn.addEventListener('click', resetSimulation);
+            playPauseBtn.addEventListener('click', () => {
+                sim.physicsPaused = !sim.physicsPaused;
+                playIcon.classList.toggle('hidden', !sim.physicsPaused);
+                pauseIcon.classList.toggle('hidden', sim.physicsPaused);
+                playPauseBtn.title = sim.physicsPaused ? 'Play Physics' : 'Pause Physics';
+            });
+
+            scenePauseToggle.addEventListener('change', (e) => sim.scenePaused = e.target.checked);
+            
+            encloseRoomToggle.checked = true;
+            encloseRoomToggle.addEventListener('change', (e) => {
+                const isEnclosed = e.target.checked;
+                if(roof) roof.visible = isEnclosed;
+                if(frontWall) frontWall.visible = isEnclosed;
+            });
+
+            toggleControlsBtn.addEventListener('click', () => {
+                const isCollapsed = controlsContainer.classList.toggle('collapsed');
+                minimizeIcon.classList.toggle('hidden', isCollapsed);
+                maximizeIcon.classList.toggle('hidden', !isCollapsed);
+                toggleControlsBtn.title = isCollapsed ? 'Maximize' : 'Minimize';
+            });
+        }
+
+        function resetSimulation() {
+            if (sim.bh1) { scene.remove(sim.bh1.visuals); }
+            if (sim.bh2) { scene.remove(sim.bh2.visuals); }
+            if (sim.mergedBh) { scene.remove(sim.mergedBh.visuals); }
+            if (mergerFlare) { mergerFlare.visible = false; }
+
+            sim.phase = 'INSPIRAL';
+            sim.phaseTime = 0;
+            sim.progress = 0;
+
+            const m1 = 12;
+            const m2 = m1 * sim.config.massRatio;
+            const totalMass = m1 + m2;
+            const sep = sim.config.initialSeparation;
+            const verticalCenter = ROOM_HEIGHT / 2;
+
+            const pos1 = new THREE.Vector3(sep * (m2 / totalMass), verticalCenter, 0);
+            const pos2 = new THREE.Vector3(-sep * (m1 / totalMass), verticalCenter, 0);
+            
+            const orbitalVel = Math.sqrt(G * totalMass / sep);
+            const vel1 = new THREE.Vector3(0, 0, orbitalVel * (m2 / totalMass));
+            const vel2 = new THREE.Vector3(0, 0, -orbitalVel * (m1 / totalMass));
+
+            sim.bh1 = new BlackHole(m1, pos1, vel1, 0xffcc33, 0xff8800);
+            sim.bh2 = new BlackHole(m2, pos2, vel2, 0x66aaff, 0x0055ff);
+            sim.mergedBh = new BlackHole(1, new THREE.Vector3(), new THREE.Vector3(), 0xffaaff, 0xcc88ff);
+            sim.mergedBh.setVisible(false);
+
+            wavePass.uniforms.amplitude.value = 0;
+            updateStatusUI();
+        }
+        
+        function updatePhysics(dt) {
+            if (sim.phase !== 'INSPIRAL') return;
+            const dPos = new THREE.Vector3().subVectors(sim.bh2.pos, sim.bh1.pos);
+            const rSq = dPos.lengthSq();
+            const r = Math.sqrt(rSq);
+            const mergerDist = (sim.bh1.radius + sim.bh2.radius);
+            if (r < mergerDist) { triggerMerger(); return; }
+            const forceMag = G * sim.bh1.mass * sim.bh2.mass / rSq;
+            const forceVec = dPos.normalize().multiplyScalar(forceMag);
+            sim.bh1.vel.add(forceVec.clone().multiplyScalar(dt / sim.bh1.mass));
+            sim.bh2.vel.add(forceVec.clone().multiplyScalar(-dt / sim.bh2.mass));
+            const energyLossFactor = (32/5) * (Math.pow(G, 4) / Math.pow(C, 5)) * (sim.bh1.mass * sim.bh2.mass * (sim.bh1.mass + sim.bh2.mass)) / Math.pow(r, 4);
+            sim.bh1.vel.multiplyScalar(1.0 - energyLossFactor * dt * 0.001);
+            sim.bh2.vel.multiplyScalar(1.0 - energyLossFactor * dt * 0.001);
+            sim.bh1.update(dt);
+            sim.bh2.update(dt);
+            sim.progress = 1.0 - (r - mergerDist) / (sim.config.initialSeparation - mergerDist);
+        }
+        
+        function triggerMerger() {
+            sim.phase = 'MERGER';
+            sim.phaseTime = 0;
+            const p1 = sim.bh1.vel.clone().multiplyScalar(sim.bh1.mass);
+            const p2 = sim.bh2.vel.clone().multiplyScalar(sim.bh2.mass);
+            const finalMomentum = p1.add(p2);
+            const com1 = sim.bh1.pos.clone().multiplyScalar(sim.bh1.mass);
+            const com2 = sim.bh2.pos.clone().multiplyScalar(sim.bh2.mass);
+            const finalCoM = com1.add(com2);
+            const initialTotalMass = sim.bh1.mass + sim.bh2.mass;
+            const massLoss = 0.05;
+            sim.mergedBh.mass = initialTotalMass * (1 - massLoss);
+            sim.mergedBh.radius = Math.pow(sim.mergedBh.mass, 0.7) * 0.2;
+            finalCoM.divideScalar(initialTotalMass);
+            finalMomentum.divideScalar(sim.mergedBh.mass);
+            sim.mergedBh.pos.copy(finalCoM);
+            sim.mergedBh.vel.copy(finalMomentum);
+            sim.bh1.setVisible(false);
+            sim.bh2.setVisible(false);
+            sim.mergedBh.setVisible(true);
+            sim.mergedBh.visuals.scale.setScalar(0.1);
+            bloomPass.strength = 3.5;
+            wavePass.uniforms.amplitude.value = 0.05;
+            wavePass.uniforms.frequency.value = 60.0;
+            triggerFlare(finalCoM);
+            sim.progress = 0.9;
+            updateStatusUI();
+        }
+        
+        function triggerFlare(position) {
+            mergerFlare.position.copy(position);
+            mergerFlare.material.opacity = 1.0;
+            mergerFlare.visible = true;
+            const particles = mergerFlare.userData.particles;
+            const positions = mergerFlare.geometry.attributes.position.array;
+            for(let i=0; i<particles.length; i++) {
+                const p = particles[i];
+                p.vel.set(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize().multiplyScalar(Math.random() * 20);
+                p.life = 1.0;
+                positions[i*3] = positions[i*3+1] = positions[i*3+2] = 0;
+            }
+        }
+
+        function updateMerger(dt) {
+            sim.phaseTime += dt;
+            const scale = THREE.MathUtils.lerp(0.1, sim.mergedBh.radius * 15, Math.min(1, sim.phaseTime * 2));
+            sim.mergedBh.visuals.scale.setScalar(scale);
+            if (mergerFlare.material.opacity > 0) {
+                mergerFlare.material.opacity -= dt * 0.8;
+                const positions = mergerFlare.geometry.attributes.position.array;
+                const particles = mergerFlare.userData.particles;
+                for(let i=0; i<particles.length; i++) {
+                    positions[i*3] += particles[i].vel.x * dt;
+                    positions[i*3+1] += particles[i].vel.y * dt;
+                    positions[i*3+2] += particles[i].vel.z * dt;
+                }
+                mergerFlare.geometry.attributes.position.needsUpdate = true;
+            } else {
+                mergerFlare.visible = false;
+            }
+            if (sim.phaseTime > 1.5) {
+                sim.phase = 'RINGDOWN';
+                sim.phaseTime = 0;
+                sim.progress = 0.95;
+                updateStatusUI();
+            }
+        }
+
+        function updateRingdown(dt) {
+            sim.phaseTime += dt;
+            if (bloomPass.strength > 1.0) bloomPass.strength -= 1.5 * dt;
+            if (wavePass.uniforms.amplitude.value > 0) {
+                wavePass.uniforms.amplitude.value *= (1 - 1.5 * dt);
+                wavePass.uniforms.frequency.value *= (1 - 1.0 * dt);
+            }
+            sim.mergedBh.update(dt);
+            sim.progress = Math.min(1.0, 0.95 + sim.phaseTime * 0.05);
+        }
+
+        function updateLensing() {
+            const project = (bh, targetPos) => {
+                const p = bh.pos.clone();
+                const vector = p.project(camera);
+                targetPos.set((vector.x + 1) / 2, (vector.y + 1) / 2);
+                const edgePointWorld = bh.visuals.localToWorld(new THREE.Vector3(0.08, 0, 0));
+                const edgePointNDC = edgePointWorld.project(camera);
+                return new THREE.Vector2(edgePointNDC.x, edgePointNDC.y).distanceTo(new THREE.Vector2(vector.x, vector.y));
+            }
+            lensingPass.uniforms.resolution.value.set(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio);
+            if (sim.phase === 'INSPIRAL') {
+                lensingPass.uniforms.bhRadius1.value = project(sim.bh1, lensingPass.uniforms.bhPos1.value);
+                lensingPass.uniforms.bhRadius2.value = project(sim.bh2, lensingPass.uniforms.bhPos2.value);
+                lensingPass.uniforms.mass1.value = sim.bh1.mass;
+                lensingPass.uniforms.mass2.value = sim.bh2.mass;
+            } else {
+                lensingPass.uniforms.bhRadius1.value = project(sim.mergedBh, lensingPass.uniforms.bhPos1.value);
+                lensingPass.uniforms.bhRadius2.value = 0;
+                lensingPass.uniforms.mass1.value = sim.mergedBh.mass;
+                lensingPass.uniforms.mass2.value = 0;
+            }
+        }
+        
+        function updateStatusUI() {
+            const textEl = document.getElementById('statusText');
+            const progressEl = document.getElementById('progressBar');
+            if (sim.phase === 'INSPIRAL') textEl.textContent = 'Inspiral';
+            else if (sim.phase === 'MERGER') textEl.textContent = 'MERGER!';
+            else if (sim.phase === 'RINGDOWN') textEl.textContent = 'Ringdown';
+            progressEl.style.width = `${sim.progress * 100}%`;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(0.016, clock.getDelta());
+
+            controls.update(); 
+
+            if (sim.scenePaused) {
+                composer.render();
+                return;
+            }
+
+            const elapsedTime = clock.getElapsedTime();
+            backgroundLights.forEach(emitter => {
+                const anim = emitter.userData.anim;
+                emitter.position.x = Math.cos(elapsedTime * anim.speedX + anim.phaseX) * anim.radiusX;
+                emitter.position.y = ROOM_HEIGHT / 2 + Math.sin(elapsedTime * anim.speedY + anim.phaseY) * anim.radiusY;
+                emitter.position.z = Math.sin(elapsedTime * anim.speedZ + anim.phaseZ) * anim.radiusZ;
+            });
+
+            if (!sim.physicsPaused && dt > 0) {
+                const simDt = dt * sim.timeScale;
+                if (sim.phase === 'INSPIRAL') { updatePhysics(simDt); } 
+                else if (sim.phase === 'MERGER') { updateMerger(simDt); sim.mergedBh.update(simDt); } 
+                else if (sim.phase === 'RINGDOWN') { updateRingdown(simDt); sim.mergedBh.update(simDt); }
+            }
+            
+            updateLensing();
+            wavePass.uniforms.time.value += dt * sim.timeScale;
+            if(sim.phase === 'INSPIRAL' && sim.bh1 && sim.bh2) {
+                const com = sim.bh1.pos.clone().multiplyScalar(sim.bh1.mass).add(sim.bh2.pos.clone().multiplyScalar(sim.bh2.mass)).divideScalar(sim.bh1.mass + sim.bh2.mass);
+                const screenPos = com.project(camera);
+                wavePass.uniforms.origin.value.set((screenPos.x+1)/2, (screenPos.y+1)/2);
+            } else if (sim.mergedBh) {
+                const screenPos = sim.mergedBh.pos.clone().project(camera);
+                wavePass.uniforms.origin.value.set((screenPos.x+1)/2, (screenPos.y+1)/2);
+            }
+            
+            updateStatusUI();
+            composer.render();
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
